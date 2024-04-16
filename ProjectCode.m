@@ -375,7 +375,7 @@ title('NED Position Visualization');
 xlabel('xNorth (meters)');
 ylabel('Negative yEast (meters)');
 zlabel('Negative zDown (meters)');
-legend([p1, p4, p5], 'Planned Path', 'True Position', 'KF Estimate')
+legend('Planned Path', 'Starting Waypoint', 'Waypoints', 'True Position', 'KF Estimate')
 
 % Filtered position for tracking - 3D
 figure; hold on; grid on;
