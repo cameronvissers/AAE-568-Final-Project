@@ -189,7 +189,7 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
         % Kalman update
         y = [nedPosImuMeas; nedVelImuMeas'; eulerAngImuMeas];
 
-        u = [0; 0; 0; nedVelImuMeas'; eulerRateImuMeas'];
+        u = [0; 0; 0; nedVel(:,i-1); bodyEulerAngRate(:,i-1)];
 
         F = [ 1, 0, 0, 0, 0, 0, 0, 0, 0;
               0, 1, 0, 0, 0, 0, 0, 0, 0;
@@ -242,7 +242,7 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
 
         y = [nedGpsPosMeas'; nedVelLLAGpsMeas'; 0; 0; 0];
 
-        u = [0; 0; 0; nedVelLLAGpsMeas'; 0; 0; 0];
+        u = [0; 0; 0; nedVel(:,i-1); 0; 0; 0];
 
         F = [ 1, 0, 0, 0, 0, 0, 0, 0, 0;
               0, 1, 0, 0, 0, 0, 0, 0, 0;
@@ -343,7 +343,7 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
     end
 
     % Find direction of travel for the next iteration
-    unitDirHeadingNED = (waypointsNED(wpTo,:)' - nedPos(:,i)) ./ norm(waypointsNED(wpTo,:)' - nedPos(:,i));
+    unitDirHeadingNED = (waypointsNED(wpTo,:)' - filterEst(1:3,i)) ./ norm(waypointsNED(wpTo,:)' - filterEst(1:3,i));
 
     % Determine the velocity for the next step
     nedVel(:,i)   = unitDirHeadingNED .* spec.speedMetersPerSec;
@@ -364,15 +364,18 @@ timeVec = timeVec(outData);
 
 % True position waypoint based
 figure; hold on; grid on;
-plot3(waypointsNED(:,1), waypointsNED(:,2), -waypointsNED(:,3), 'b')
-scatter3(waypointsNED(1,1), waypointsNED(1,2), -waypointsNED(1,3), 'ko', 'filled')
-scatter3(waypointsNED(2:end-1,1), waypointsNED(2:end-1,2), -waypointsNED(2:end-1,3), 'bo')
-scatter3(nedPos(1,outData), nedPos(2,outData), -nedPos(3,outData), 'r.');
+p1 = plot3(waypointsNED(:,1), waypointsNED(:,2), -waypointsNED(:,3), 'b');
+p2 = scatter3(waypointsNED(1,1), waypointsNED(1,2), -waypointsNED(1,3), 'ko', 'filled');
+p3 = scatter3(waypointsNED(2:end-1,1), waypointsNED(2:end-1,2), -waypointsNED(2:end-1,3), 'bo');
+p4 = scatter3(nedPos(1,outData), nedPos(2,outData), -nedPos(3,outData), 'r.');
+p5 = plot3(filterEst(1,outData), filterEst(2,outData), filterEst(3,outData), 'g');
 view(3)
+zlim([-6 6]);
 title('NED Position Visualization');
 xlabel('xNorth (meters)');
 ylabel('Negative yEast (meters)');
 zlabel('Negative zDown (meters)');
+legend([p1, p4, p5], 'Planned Path', 'True Position', 'KF Estimate')
 
 % Filtered position for tracking - 3D
 figure; hold on; grid on;
