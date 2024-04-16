@@ -18,7 +18,7 @@ gravity = 9.80665; % meters/sec/sec gravity acceleration constant
 %% Problem Setup
 
 % Configuration 1
-timeStep   = 0.1; % Seconds
+timeStep   = 0.05; % Seconds
 updateTime = 0;
 
 % % Configuration 2
@@ -45,32 +45,33 @@ simTime = 0    ; % Current simulation time
 q    = 3; % Process uncertainty
 Q    = q^2*eye(9);
 ripH = 1   ; % IMU Measurement uncertainty (horizontal)
-ripV = 9   ; % IMU Measurement uncertainty (vertcal)
-rgpH = 1.6 ; % GPS Measurement uncertainty (horizontal)
+ripV = 1   ; % IMU Measurement uncertainty (vertcal)
+ripE = 1.58; % IMU Measurement uncertainty (euler angles)
+rgpH = 0.5 ; % GPS Measurement uncertainty (horizontal)
 rgpV = 3   ; % GPS measurement uncertainty (vertical)
-rgv  = 0.1 ; % GPS Velocity uncertainty (all directions)
+rgv  = 0.55; % GPS Velocity uncertainty (all directions)
 
 % Covariance of the IMU (x,y,z,u,v,w)
-Rimu = [ripH^2,      0,      0,     0,     0,     0, 0, 0, 0;
-             0, ripH^2,      0,     0,     0,     0, 0, 0, 0;
-             0,      0, ripV^2,     0,     0,     0, 0, 0, 0;
-             0,      0,      0, 0.1^2,     0,     0, 0, 0, 0;
-             0,      0,      0,     0, 0.1^2,     0, 0, 0, 0;
-             0,      0,      0,     0,     0, 0.1^2, 0, 0, 0;
-             0,      0,      0,     0,     0,     0, 0, 0, 0;
-             0,      0,      0,     0,     0,     0, 0, 0, 0;
-             0,      0,      0,     0,     0,     0, 0, 0, 0];
+Rimu = [ ripH^2,      0,      0,     0,     0,     0,      0,      0,      0;
+              0, ripH^2,      0,     0,     0,     0,      0,      0,      0;
+              0,      0, ripV^2,     0,     0,     0,      0,      0,      0;
+              0,      0,      0, 0.1^2,     0,     0,      0,      0,      0;
+              0,      0,      0,     0, 0.1^2,     0,      0,      0,      0;
+              0,      0,      0,     0,     0, 0.1^2,      0,      0,      0;
+              0,      0,      0,     0,     0,     0, ripE^2,      0,      0;
+              0,      0,      0,     0,     0,     0,      0, ripE^2,      0;
+              0,      0,      0,     0,     0,     0,      0,      0, ripE^2 ];
 
 % Covariance of the GPS (x,y,z,u,v,w)
-Rgps = [rgpH^2,      0,      0,     0,     0,     0, 0, 0, 0;
-             0, rgpH^2,      0,     0,     0,     0, 0, 0, 0;
-             0,      0, rgpV^2,     0,     0,     0, 0, 0, 0;
-             0,      0,      0, rgv^2,     0,     0, 0, 0, 0;
-             0,      0,      0,     0, rgv^2,     0, 0, 0, 0;
-             0,      0,      0,     0,     0, rgv^2, 0, 0, 0;
-             0,      0,      0,     0,     0,     0, 0, 0, 0;
-             0,      0,      0,     0,     0,     0, 0, 0, 0;
-             0,      0,      0,     0,     0,     0, 0, 0, 0];
+Rgps = [ rgpH^2,      0,      0,     0,     0,     0, 0, 0, 0;
+              0, rgpH^2,      0,     0,     0,     0, 0, 0, 0;
+              0,      0, rgpV^2,     0,     0,     0, 0, 0, 0;
+              0,      0,      0, rgv^2,     0,     0, 0, 0, 0;
+              0,      0,      0,     0, rgv^2,     0, 0, 0, 0;
+              0,      0,      0,     0,     0, rgv^2, 0, 0, 0;
+              0,      0,      0,     0,     0,     0, 1, 0, 0;
+              0,      0,      0,     0,     0,     0, 0, 1, 0;
+              0,      0,      0,     0,     0,     0, 0, 0, 1 ];
 
 % Total initial covariance
 P = Rimu.*Rgps;
@@ -102,6 +103,11 @@ bodyPitch(i) = 0.0; % deg
 bodyYaw(i)   = 0.0; % deg
 bodyEulerAng(:,i) = [bodyRoll; bodyPitch; bodyYaw];
 
+bodyRollRate(i)  = 0.0; % deg/sec
+bodyPitchRate(i) = 0.0; % deg/sec
+bodyYawRate(i)   = 0.0; % deg/sec
+bodyEulerAngRate(:,i) = [bodyRollRate; bodyPitchRate; bodyYawRate];
+
 bodyVelX(i) = spec.speedMetersPerSec; % meters/second
 bodyVelY(i) = 0.0; % meters/second
 bodyVelZ(i) = 0.0; % meters/second
@@ -112,53 +118,53 @@ bodyAccY(i) = 0.0;     % meters/second/second
 bodyAccZ(i) = gravity; % meters/second/second
 bodyAcc(:,i) = [bodyAccX; bodyAccY; bodyAccZ];
 
-% Velocity in NED
-%[nedVelN, nedVelE, nedVelD] = body2ned(bodyVelX, bodyVelY, bodyVelZ, bodyRoll, bodyPitch, bodyYaw);
-%nedVel = [nedVelN; nedVelE; nedVelD];
+% Velocity in NED, initially traveling west-bound 
 nedVel = [0; -bodyVelX; 0];
 
 %% Initial dynamics 
-wpTo   = 2;
-wpFrom = 1;
+
+wpTo   = 2; % Waypoint index you're traveling to
+wpFrom = 1; % Waypoint index you're traveling from
+
+% Generic heading command. The vector points to the next waypoint from
+% where you currently are (at this point you're at the first waypoint)
 unitDirHeadingNED = transpose((waypointsNED(wpTo,:) - waypointsNED(wpFrom,:)) ./ norm(waypointsNED(wpTo,:) - waypointsNED(wpFrom,:)));
 
 % Kalman filter outputs and track for performance analysis
 filterEst(:,i) = [nedPos(:,i); nedVel(:,i); bodyEulerAng(:,i)];
-filterCovPosX(:,i) = P(1,1);
-filterCovPosY(:,i) = P(2,2);
-filterCovPosZ(:,i) = P(3,3);
-filterCovVelX(:,i) = P(4,4);
-filterCovVelY(:,i) = P(5,5);
-filterCovVelZ(:,i) = P(6,6);
+filterCovPosX(:,i)   = P(1,1);
+filterCovPosY(:,i)   = P(2,2);
+filterCovPosZ(:,i)   = P(3,3);
+filterCovVelX(:,i)   = P(4,4);
+filterCovVelY(:,i)   = P(5,5);
+filterCovVelZ(:,i)   = P(6,6);
+filterCovRoll(:,i)   = P(7,7);
+filterCovPitch(:,i) = P(8,8);
+filterCovYaw(:,i)   = P(9,9);
 x = filterEst(:,i);
+
 %% Create IMU and GPS sensors
 
 % GPS sensor properties
-satUpdateRate = 0.1; % Sec
-satUpdateTime = 0.1; % Next time to update
-gps = gpsSensor;
-gps.ReferenceLocation = geoPosLLA';
-gps.SampleRate = 1/satUpdateRate;
+satUpdateRate = 1;   % Sec
+satUpdateTime = 0; % Next time to update
+gps = gpsSensor('SampleRate', 1/satUpdateRate,'ReferenceLocation',geoPosLLA');
 
 % IMU sensor properties
-imuUpdateRate = 0.2; % Sec
-imuUpdateTime = 0.2; % Next time to update
-paramsAccel = accelparams;
-%paramsAccel.MeasurementRange = 30.0 * gToMps;
-%paramsAccel.ConstantBias = repelem(3.0 * fromMilli * gToMps, 3);
-%paramsAccel.RandomWalk = repelem(0.132 * ft2m, 3);
-paramsGyro = gyroparams;
-%paramsGyro.MeasurementRange = 1000*d2r;
-%paramsGyro.ConstantBias = repelem(2 * d2r * hr2sec, 3);
-%paramsGyro.RandomWalk = repelem(0.125 * d2r, 3);
+imuUpdateRate = 0.1; % Sec
+imuUpdateTime = 0.1; % Next time to update
+paramsAccel = accelparams('MeasurementRange',19.6,'Resolution',0.598e-3,'ConstantBias',0.49,'NoiseDensity',3920e-6,'TemperatureBias',0.294,'TemperatureScaleFactor',0.02,'AxesMisalignment',2);
+paramsGyro = gyroparams('MeasurementRange',6.2832,'Resolution',1.332e-04,'ConstantBias',0.0349,'NoiseDensity',8.727e-4,'TemperatureBias',0.349,'TemperatureScaleFactor',0.02,'AxesMisalignment',2,'AccelerationBias',0.178e-3);
 imu = imuSensor(...
-    'accel-gyro', ...
-    'Accelerometer', paramsAccel, ...
-    'Gyroscope', paramsGyro);
+     'accel-gyro', ...
+     'Accelerometer', paramsAccel, ...
+     'Gyroscope', paramsGyro, ...
+     'SampleRate', 1/imuUpdateRate);
+orient = quaternion.ones(1, 1);
 
 
 %% Create true flight path taken
-while ((endSim == false) && (i < 100000))
+while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit criteria
 
     % Update time step and iteration
     simTime = simTime + timeStep;
@@ -169,52 +175,51 @@ while ((endSim == false) && (i < 100000))
     if ( simTime >= imuUpdateTime )
 
         % Time delta
-        dt = simTime - updateTime;
+        dt = min(simTime-updateTime, timeStep);
 
         % Get IMU measurement
-        [accelImuMeas, eulerImuMeas] = imu( bodyAcc(:,i-1)', bodyEulerAng(:,i-1)' );
-        eulerImuMeas = eulerImuMeas .* r2d;
+        [accelImuMeas, eulerRateImuMeas] = imu( bodyAcc(:,i-1)', bodyEulerAngRate(:,i-1)'.*d2r, orient );
+        eulerRateImuMeas = eulerRateImuMeas .* r2d;
 
         bodyVelImuMeas = bodyVel(:,i-1) + accelImuMeas' .* timeStep;
-        [nedVelImuMeas(1,:), nedVelImuMeas(2,:), nedVelImuMeas(3,:)] = body2ned(bodyVelImuMeas(1), bodyVelImuMeas(2), bodyVelImuMeas(3), bodyEulerAng(1,i-1), bodyEulerAng(2,i-1), bodyEulerAng(3,i-1));
-        nedPosImuMeas = nedPos(:,i-1) + nedVelImuMeas .* timeStep;
-        eulerRateImuMeas = bodyEulerAng(:,i-1) + eulerImuMeas' .* timeStep;
-        eulerAngImuMeas = bodyEulerAng(:,i-1) + eulerRateImuMeas .* timeStep;
+        [nedVelImuMeas(:,1), nedVelImuMeas(:,2), nedVelImuMeas(:,3)] = body2ned(bodyVelImuMeas(1), bodyVelImuMeas(2), bodyVelImuMeas(3), bodyEulerAng(1,i-1), bodyEulerAng(2,i-1), bodyEulerAng(3,i-1));
+        nedPosImuMeas = nedPos(:,i-1) + nedVelImuMeas' .* timeStep;
+        eulerAngImuMeas = bodyEulerAng(:,i-1) + eulerRateImuMeas' .* timeStep;
 
         % Kalman update
-        y = [nedPosImuMeas; nedVelImuMeas; eulerAngImuMeas];
+        y = [nedPosImuMeas; nedVelImuMeas'; eulerAngImuMeas];
 
-        u = [0; 0; 0; nedVel(:,i-1); 0; 0; 0];
+        u = [0; 0; 0; nedVelImuMeas'; eulerRateImuMeas'];
 
-        F = [ 1, 0, 0, dt,  0,  0, 0, 0, 0;
-              0, 1, 0,  0, dt,  0, 0, 0, 0;
-              0, 0, 1,  0,  0, dt, 0, 0, 0;
-              0, 0, 0,  1,  0,  0, 0, 0, 0;
-              0, 0, 0,  0,  1,  0, 0, 0, 0;
-              0, 0, 0,  0,  0,  1, 0, 0, 0
-              0, 0, 0,  0,  0,  0, 1, 0, 0;
-              0, 0, 0,  0,  0,  0, 0, 1, 0;
-              0, 0, 0,  0,  0,  0, 0, 0, 1];
+        F = [ 1, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 1, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 1, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 1, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 1, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 1, 0, 0, 0
+              0, 0, 0, 0, 0, 0, 1, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 1, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 1 ];
 
-        B = [0, 0, 0,  0,  0,  0, 0, 0, 0;
-             0, 0, 0,  0,  0,  0, 0, 0, 0;
-             0, 0, 0,  0,  0,  0, 0, 0, 0;
-             0, 0, 0, dt,  0,  0, 0, 0, 0;
-             0, 0, 0,  0, dt,  0, 0, 0, 0;
-             0, 0, 0,  0,  0, dt, 0, 0, 0;
-             0, 0, 0,  0,  0,  0, 0, 0, 0;
-             0, 0, 0,  0,  0,  0, 0, 0, 0;
-             0, 0, 0,  0,  0,  0, 0, 0, 0];
+        B = [ 0, 0, 0,  0,  0,  0, 0, 0, 0;
+              0, 0, 0,  0,  0,  0, 0, 0, 0;
+              0, 0, 0,  0,  0,  0, 0, 0, 0;
+              0, 0, 0, dt,  0,  0, 0, 0, 0;
+              0, 0, 0,  0, dt,  0, 0, 0, 0;
+              0, 0, 0,  0,  0, dt, 0, 0, 0;
+              0, 0, 0,  0,  0,  0, dt, 0, 0;
+              0, 0, 0,  0,  0,  0, 0, dt, 0;
+              0, 0, 0,  0,  0,  0, 0, 0, dt ];
 
-        H = [1 0 0 0 0 0 0 0 0;
-             0 1 0 0 0 0 0 0 0;
-             0 0 1 0 0 0 0 0 0;
-             0 0 0 1 0 0 0 0 0;
-             0 0 0 0 1 0 0 0 0;
-             0 0 0 0 0 1 0 0 0;
-             0 0 0 0 0 0 1 0 0;
-             0 0 0 0 0 0 0 1 0;
-             0 0 0 0 0 0 0 0 1];
+        H = [ 1, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 1, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 1, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 1, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 1, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 1, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 1, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 1, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 1 ];
 
         [x, P] = kalmanFilter(F, x, B, u, P, H, y, Q, Rimu);
         updateTime = simTime;
@@ -225,6 +230,9 @@ while ((endSim == false) && (i < 100000))
     % add measurments of X and Y with some error and noise
     if ( simTime >= satUpdateTime )
 
+        % Time delta
+        dt = min(simTime-updateTime, timeStep);
+
         % Get GPS measurement of position in geodetic and velocity in NED
         [geoPosLLAGpsMeas, nedVelLLAGpsMeas] = gps(nedPos(:,i-1)', nedVel(:,i-1)');
         % Rotate position to ECEF
@@ -234,37 +242,37 @@ while ((endSim == false) && (i < 100000))
 
         y = [nedGpsPosMeas'; nedVelLLAGpsMeas'; 0; 0; 0];
 
-        u = [0; 0; 0; nedVel(:,i-1); 0; 0; 0];
+        u = [0; 0; 0; nedVelLLAGpsMeas'; 0; 0; 0];
 
-        F = [ 1 0 0 simTime-updateTime 0 0 0 0 0;
-              0 1 0 0 simTime-updateTime 0 0 0 0;
-              0 0 1 0 0 simTime-updateTime 0 0 0;
-              0 0 0 1 0 0 0 0 0;
-              0 0 0 0 1 0 0 0 0;
-              0 0 0 0 0 1 0 0 0;
-              0 0 0 0 0 0 0 0 0;
-              0 0 0 0 0 0 0 0 0;
-              0 0 0 0 0 0 0 0 0];
+        F = [ 1, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 1, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 1, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 1, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 1, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 1, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 1, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 1, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 1 ];
 
-        B = [0 0 0 0 0 0 0 0 0;
-              0 0 0 0 0 0 0 0 0;
-              0 0 0 0 0 0 0 0 0;
-              0 0 0 simTime-updateTime 0 0 0 0 0;
-              0 0 0 0 simTime-updateTime 0 0 0 0;
-              0 0 0 0 0 simTime-updateTime 0 0 0
-              0 0 0 0 0 0 0 0 0;
-              0 0 0 0 0 0 0 0 0;
-              0 0 0 0 0 0 0 0 0];
+        B = [ 0, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, dt, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, dt, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, dt, 0, 0, 0
+              0, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
-        H = [1 0 0 0 0 0 0 0 0;
-              0 1 0 0 0 0 0 0 0;
-              0 0 1 0 0 0 0 0 0;
-              0 0 0 1 0 0 0 0 0;
-              0 0 0 0 1 0 0 0 0;
-              0 0 0 0 0 1 0 0 0;
-              0 0 0 0 0 0 1 0 0;
-              0 0 0 0 0 0 0 1 0;
-              0 0 0 0 0 0 0 0 1];
+        H = [ 1, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 1, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 1, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 1, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 1, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 1, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 0;
+              0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
         [x, P] = kalmanFilter(F, x, B, u, P, H, y, Q, Rgps);
         updateTime = simTime;
@@ -279,23 +287,44 @@ while ((endSim == false) && (i < 100000))
     end
 
     % Log the filter state estimate and covariance matrix
-    filterEstPosVel(:,i) = x;
-    filterCovPosX(:,i) = P(1,1);
-    filterCovPosY(:,i) = P(2,2);
-    filterCovPosZ(:,i) = P(3,3);
-    filterCovVelX(:,i) = P(4,4);
-    filterCovVelY(:,i) = P(5,5);
-    filterCovVelZ(:,i) = P(6,6);
+    filterEst(:,i)       = x;
+    filterCovPosX(:,i)   = P(1,1);
+    filterCovPosY(:,i)   = P(2,2);
+    filterCovPosZ(:,i)   = P(3,3);
+    filterCovVelX(:,i)   = P(4,4);
+    filterCovVelY(:,i)   = P(5,5);
+    filterCovVelZ(:,i)   = P(6,6);
+    filterCovRoll(:,i)   = P(7,7);
+    filterCovPitch(:,i)  = P(8,8);
+    filterCovYaw(:,i)    = P(9,9);
+
+    % Fake the rotation, because it's a square, on what our Euler angle is
     switch wpFrom
         case 1
-            bodyEulerAng(:,i) = [0 0 0];
+            bodyEulerAng(:,i) = [0; 0; 0];
+            bodyEulerAngRate(:,i) = [0; 0; 0];
          case 2
-            bodyEulerAng(:,i) = [0 0 90];
+            bodyEulerAngRate(:,i) = [0; 0; spec.yawRateDegPerSec];
+            bodyEulerAng(:,i) = bodyEulerAng(:,i-1) + bodyEulerAngRate(:,i) .* timeStep;
+            if bodyEulerAng(3,i) > 90
+                bodyEulerAng(3,i) = 90;
+                bodyEulerAngRate(:,i) = [0; 0; 0];
+            end
          case 3
-            bodyEulerAng(:,i) = [0 0 180];
-         case 4
-            bodyEulerAng(:,i) = [0 0 270];
-     end
+            bodyEulerAngRate(:,i) = [0; 0; spec.yawRateDegPerSec];
+            bodyEulerAng(:,i) = bodyEulerAng(:,i-1) + bodyEulerAngRate(:,i) .* timeStep;
+            if bodyEulerAng(3,i) > 180
+                bodyEulerAng(3,i) = 180;
+                bodyEulerAngRate(:,i) = [0; 0; 0];
+            end
+        case 4
+            bodyEulerAngRate(:,i) = [0; 0; spec.yawRateDegPerSec];
+            bodyEulerAng(:,i) = bodyEulerAng(:,i-1) + bodyEulerAngRate(:,i) .* timeStep;
+            if bodyEulerAng(3,i) > 270
+                bodyEulerAng(3,i) = 270;
+                bodyEulerAngRate(:,i) = [0; 0; 0];
+            end
+    end
     
     % Propagate the position based on the velocity from before for the next
     % step
@@ -307,7 +336,7 @@ while ((endSim == false) && (i < 100000))
     bodyAcc(:,i) = bodyAcc(:,i-1);
 
     % If you've passed the waypoint of interest, head towards the next one
-    display( num2str(distance(geoPosLLA(1,1), geoPosLLA(2,i-1), waypointsLLA(wpTo,1), waypointsLLA(wpTo,2), wgs84Ellipsoid)) );
+    display( num2str(distance(geoPosLLA(1,i-1), geoPosLLA(2,i-1), waypointsLLA(wpTo,1), waypointsLLA(wpTo,2), wgs84Ellipsoid)) );
     if ( distance(geoPosLLA(1,i-1), geoPosLLA(2,i-1), waypointsLLA(wpTo,1), waypointsLLA(wpTo,2), wgs84Ellipsoid) < (spec.speedMetersPerSec * timeStep) )
         wpFrom = wpTo;
         wpTo = min(wpTo + 1, height(waypointsLLA));
@@ -348,8 +377,9 @@ zlabel('Negative zDown (meters)');
 % Filtered position for tracking - 3D
 figure; hold on; grid on;
 scatter3(nedPos(1,outData), nedPos(2,outData), nedPos(3,outData), 'r.');
-plot3(filterEstPosVel(1,outData), filterEstPosVel(2,outData), filterEstPosVel(3,outData), 'b')
+plot3(filterEst(1,outData), filterEst(2,outData), filterEst(3,outData), 'b')
 view(3)
+zlim([-6, 6])
 legend('True Body Pos', 'KF Estimation');
 title('Body Position Filter Estimate Comparison');
 xlabel('xNorth (meters)');
@@ -359,7 +389,7 @@ zlabel('Negative zDown (meters)');
 % Filtered position for tracking - 2D
 figure; hold on; grid on;
 scatter(nedPos(1,outData), nedPos(2,outData), 'r.');
-plot(filterEstPosVel(1,outData), filterEstPosVel(2,outData), 'b')
+plot(filterEst(1,outData), filterEst(2,outData), 'b')
 legend('True Body Pos', 'KF Estimation');
 title('Body Position Filter Estimate Comparison');
 xlabel('xNorth (meters)');
@@ -371,9 +401,9 @@ subplot(3,1,1:2)
 hold on; grid on;
 title('North Position Comparison')
 plot(timeVec, nedPos(1,outData), 'b');
-plot(timeVec, filterEstPosVel(1,outData), 'r');
-plot(timeVec, filterEstPosVel(1,outData) + sqrt(filterCovPosX(outData)), 'k');
-plot(timeVec, filterEstPosVel(1,outData) - sqrt(filterCovPosX(outData)), 'k');
+plot(timeVec, filterEst(1,outData), 'r');
+plot(timeVec, filterEst(1,outData) + sqrt(filterCovPosX(outData)), 'k');
+plot(timeVec, filterEst(1,outData) - sqrt(filterCovPosX(outData)), 'k');
 xlabel('Time (s)');
 ylabel('X Pos North (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
@@ -391,9 +421,9 @@ subplot(3,1,1:2)
 hold on; grid on;
 title('East Position Comparison')
 plot(timeVec, nedPos(2,outData), 'b');
-plot(timeVec, filterEstPosVel(2,outData), 'r');
-plot(timeVec, filterEstPosVel(2,outData) + sqrt(filterCovPosY(outData)), 'k');
-plot(timeVec, filterEstPosVel(2,outData) - sqrt(filterCovPosY(outData)), 'k');
+plot(timeVec, filterEst(2,outData), 'r');
+plot(timeVec, filterEst(2,outData) + sqrt(filterCovPosY(outData)), 'k');
+plot(timeVec, filterEst(2,outData) - sqrt(filterCovPosY(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Y Pos East (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
@@ -411,9 +441,9 @@ subplot(3,1,1:2)
 hold on; grid on;
 title('Down Position Comparison')
 plot(timeVec, nedPos(3,outData), 'b');
-plot(timeVec, filterEstPosVel(3,outData), 'r');
-plot(timeVec, filterEstPosVel(3,outData) + sqrt(filterCovPosZ(outData)), 'k');
-plot(timeVec, filterEstPosVel(3,outData) - sqrt(filterCovPosZ(outData)), 'k');
+plot(timeVec, filterEst(3,outData), 'r');
+plot(timeVec, filterEst(3,outData) + sqrt(filterCovPosZ(outData)), 'k');
+plot(timeVec, filterEst(3,outData) - sqrt(filterCovPosZ(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Z Pos Down (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
@@ -429,100 +459,178 @@ ax(6) = gca;
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
-title('North Velocity Comparison')
-plot(timeVec, nedVel(1,outData), 'b');
-plot(timeVec, filterEstPosVel(4,outData), 'r');
-plot(timeVec, filterEstPosVel(4,outData) + sqrt(filterCovVelX(outData)), 'k');
-plot(timeVec, filterEstPosVel(4,outData) - sqrt(filterCovVelX(outData)), 'k');
-xlabel('Time (s)');
-ylabel('X Vel North (m)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(7) = gca;
-subplot(3,1,3)
-hold on; grid on;
-plot(timeVec, sqrt(filterCovVelX(outData)), 'r')
-plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelX)), 2), 'k')
-legend('1\sigma Value', 'Mean')
-ylabel('\sigma (4,4)');
-ax(8) = gca;
-
-figure;
-subplot(3,1,1:2)
-hold on; grid on;
 title('East Velocity Comparison')
 plot(timeVec, nedVel(2,outData), 'b');
-plot(timeVec, filterEstPosVel(5,outData), 'r');
-plot(timeVec, filterEstPosVel(5,outData) + sqrt(filterCovVelY(outData)), 'k');
-plot(timeVec, filterEstPosVel(5,outData) - sqrt(filterCovVelY(outData)), 'k');
+plot(timeVec, filterEst(5,outData), 'r');
+plot(timeVec, filterEst(5,outData) + sqrt(filterCovVelY(outData)), 'k');
+plot(timeVec, filterEst(5,outData) - sqrt(filterCovVelY(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Y Vel East (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(9) = gca;
+ax(7) = gca;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovVelY(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelY)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (5,5)');
-ax(10) = gca;
+ax(8) = gca;
 
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
 title('Down Velocity Comparison')
 plot(timeVec, nedVel(3,outData), 'b');
-plot(timeVec, filterEstPosVel(6,outData), 'r');
-plot(timeVec, filterEstPosVel(6,outData) + sqrt(filterCovVelZ(outData)), 'k');
-plot(timeVec, filterEstPosVel(6,outData) - sqrt(filterCovVelZ(outData)), 'k');
+plot(timeVec, filterEst(6,outData), 'r');
+plot(timeVec, filterEst(6,outData) + sqrt(filterCovVelZ(outData)), 'k');
+plot(timeVec, filterEst(6,outData) - sqrt(filterCovVelZ(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Z Vel Down (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(11) = gca;
+ax(9) = gca;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovVelZ(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelZ)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (6,6)');
+ax(10) = gca;
+
+figure;
+subplot(3,1,1:2)
+hold on; grid on;
+title('Roll Angle Comparison')
+plot(timeVec, bodyEulerAng(1,outData), 'b');
+plot(timeVec, filterEst(7,outData), 'r');
+plot(timeVec, filterEst(7,outData) + sqrt(filterCovRoll(outData)), 'k');
+plot(timeVec, filterEst(7,outData) - sqrt(filterCovRoll(outData)), 'k');
+xlabel('Time (s)');
+ylabel('Roll Angle (deg)');
+legend('Truth', 'KF Est', '1\sigma Uncert')
+ax(11) = gca;
+subplot(3,1,3)
+hold on; grid on;
+plot(timeVec, sqrt(filterCovRoll(outData)), 'r')
+plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovRoll)), 2), 'k')
+legend('1\sigma Value', 'Mean')
+ylabel('\sigma (7,7)');
 ax(12) = gca;
 
 figure;
-subplot(3,1,1);
-hold on; grid on; grid minor;
-plot(timeVec, nedPos(1,outData)-filterEstPosVel(1,outData), 'b');
-title('Position Errors')
-ylabel('North Pos Err (m)');
-ax(13) = gca;
-subplot(3,1,2);
-hold on; grid on; grid minor;
-plot(timeVec, nedPos(2,outData)-filterEstPosVel(2,outData), 'b');
-ylabel('East Pos Err (m)');
-ax(14) = gca;
-subplot(3,1,3);
-hold on; grid on; grid minor;
-plot(timeVec, nedPos(3,outData)-filterEstPosVel(3,outData), 'b');
-ylabel('Down Pos Err (m)');
+subplot(3,1,1:2)
+hold on; grid on;
+title('Pitch Angle Comparison')
+plot(timeVec, bodyEulerAng(2,outData), 'b');
+plot(timeVec, filterEst(8,outData), 'r');
+plot(timeVec, filterEst(8,outData) + sqrt(filterCovPitch(outData)), 'k');
+plot(timeVec, filterEst(8,outData) - sqrt(filterCovPitch(outData)), 'k');
 xlabel('Time (s)');
+ylabel('Pitch Angle (deg)');
+legend('Truth', 'KF Est', '1\sigma Uncert')
+ax(13) = gca;
+subplot(3,1,3)
+hold on; grid on;
+plot(timeVec, sqrt(filterCovPitch(outData)), 'r')
+plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovPitch)), 2), 'k')
+legend('1\sigma Value', 'Mean')
+ylabel('\sigma (8,8)');
+ax(14) = gca;
+
+figure;
+subplot(3,1,1:2)
+hold on; grid on;
+title('Yaw Angle Comparison')
+plot(timeVec, bodyEulerAng(3,outData), 'b');
+plot(timeVec, filterEst(9,outData), 'r');
+plot(timeVec, filterEst(9,outData) + sqrt(filterCovYaw(outData)), 'k');
+plot(timeVec, filterEst(9,outData) - sqrt(filterCovYaw(outData)), 'k');
+xlabel('Time (s)');
+ylabel('Yaw Angle (deg)');
+legend('Truth', 'KF Est', '1\sigma Uncert')
 ax(15) = gca;
+subplot(3,1,3)
+hold on; grid on;
+plot(timeVec, sqrt(filterCovYaw(outData)), 'r')
+plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovYaw)), 2), 'k')
+legend('1\sigma Value', 'Mean')
+ylabel('\sigma (9,9)');
+ax(16) = gca;
 
 figure;
 subplot(3,1,1);
 hold on; grid on; grid minor;
-plot(timeVec, nedVel(1,outData)-filterEstPosVel(4,outData), 'b');
-title('Velocity Errors')
-ylabel('North Vel Err (m)');
-ax(16) = gca;
+plot(timeVec, nedPos(1,outData)-filterEst(1,outData), 'b');
+title('Position Errors')
+ylabel('North Pos Err (m)');
+ax(17) = gca;
 subplot(3,1,2);
 hold on; grid on; grid minor;
-plot(timeVec, nedVel(2,outData)-filterEstPosVel(5,outData), 'b');
-ylabel('East Vel Err (m)');
-ax(17) = gca;
+plot(timeVec, nedPos(2,outData)-filterEst(2,outData), 'b');
+ylabel('East Pos Err (m)');
+ax(18) = gca;
 subplot(3,1,3);
 hold on; grid on; grid minor;
-plot(timeVec, nedVel(3,outData)-filterEstPosVel(6,outData), 'b');
+plot(timeVec, nedPos(3,outData)-filterEst(3,outData), 'b');
+ylabel('Down Pos Err (m)');
+xlabel('Time (s)');
+ax(19) = gca;
+
+figure;
+subplot(3,1,1);
+hold on; grid on; grid minor;
+plot(timeVec, nedVel(1,outData)-filterEst(4,outData), 'b');
+title('Velocity Errors')
+ylabel('North Vel Err (m)');
+ax(20) = gca;
+subplot(3,1,2);
+hold on; grid on; grid minor;
+plot(timeVec, nedVel(2,outData)-filterEst(5,outData), 'b');
+ylabel('East Vel Err (m)');
+ax(21) = gca;
+subplot(3,1,3);
+hold on; grid on; grid minor;
+plot(timeVec, nedVel(3,outData)-filterEst(6,outData), 'b');
 ylabel('Down Vel Err (m)');
 xlabel('Time (s)');
-ax(18) = gca;
+ax(22) = gca;
+
+figure;
+subplot(3,1,1);
+hold on; grid on; grid minor;
+plot(timeVec, nedVel(1,outData)-filterEst(4,outData), 'b');
+title('Velocity Errors')
+ylabel('North Vel Err (m)');
+ax(23) = gca;
+subplot(3,1,2);
+hold on; grid on; grid minor;
+plot(timeVec, nedVel(2,outData)-filterEst(5,outData), 'b');
+ylabel('East Vel Err (m)');
+ax(24) = gca;
+subplot(3,1,3);
+hold on; grid on; grid minor;
+plot(timeVec, nedVel(3,outData)-filterEst(6,outData), 'b');
+ylabel('Down Vel Err (m)');
+xlabel('Time (s)');
+ax(25) = gca;
+
+figure;
+subplot(3,1,1);
+hold on; grid on; grid minor;
+plot(timeVec, bodyEulerAng(1,outData)-filterEst(7,outData), 'b');
+title('Euler Angle Errors')
+ylabel('Roll Error (deg)');
+ax(26) = gca;
+subplot(3,1,2);
+hold on; grid on; grid minor;
+plot(timeVec, bodyEulerAng(2,outData)-filterEst(8,outData), 'b');
+ylabel('Pitch Error (deg)');
+ax(27) = gca;
+subplot(3,1,3);
+hold on; grid on; grid minor;
+plot(timeVec, bodyEulerAng(3,outData)-filterEst(9,outData), 'b');
+ylabel('Yaw Error (deg)');
+xlabel('Time (s)');
+ax(28) = gca;
 
 
 linkaxes(ax, 'x')

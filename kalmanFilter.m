@@ -33,5 +33,4 @@ K = Ppriori*transpose(H)*inv(S);
 xPred = xHat + K*z;
 P = (eye(9) - K*H)*Ppriori;
 
-
 end

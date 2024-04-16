@@ -3,10 +3,13 @@ mph2fps = 5280/60/60;
 mph2mps = 0.44704;
 
 % Specifications 
-spec.speedMilesPerHour = 15;
-spec.speedFeetPerSec = spec.speedMilesPerHour * mph2fps;
-spec.speedMetersPerSec = spec.speedMilesPerHour * mph2mps;
-spec.thetaDotDegPerSec = 3;
+spec.speedMilesPerHour  = 15;
+spec.speedFeetPerSec    = spec.speedMilesPerHour * mph2fps;
+spec.speedMetersPerSec  = spec.speedMilesPerHour * mph2mps;
+spec.thetaDotDegPerSec  = 3;
+spec.yawRateDegPerSec   = 400;
+spec.rollRateDegPerSec  = 562;
+spec.pitchRateDegPerSec = 562;
 
 % Create waypoints will be flown
 waypointsLLA = [ ...
