@@ -52,9 +52,9 @@ for k=1:60000
                 Frepulsion(i,j) = Krepulsive(i,j)/di(i,j)^2;
             end
 
-            sumdF(1) = sumdF(1)+(current(1)-x1(j))/di(i,j)*Frepulsion(i,j);
-            sumdF(2) = sumdF(2)+(current(2)-x2(i))/di(i,j)*Frepulsion(i,j);
-            sumdF(3) = sumdF(3)+(current(3)-Krepulsive(i,j))/di(i,j)*Frepulsion(i,j);
+            sumdF(1) = sumdF(1)+dFdx(i,j)*(current(1)-x1(j))/di(i,j)*Frepulsion(i,j);
+            sumdF(2) = sumdF(2)+dFdy(i,j)*(current(2)-x2(i))/di(i,j)*Frepulsion(i,j);
+            sumdF(3) = sumdF(3)-(current(3)-Krepulsive(i,j))/di(i,j)*Frepulsion(i,j);
         end
     end
     path(k,:) = current;
