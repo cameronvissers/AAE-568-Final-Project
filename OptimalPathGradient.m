@@ -1,7 +1,8 @@
+function path = OptimalPathGradient2(start,goal) 
 FW4Plotfunction
 r = 0.25;
-goal = [8.2 4.4 200*griewank([8.2 4.4])+1.1*r];
-start = [0 0 1.1];
+%goal = [8.2 4.4 200*griewank([8.2 4.4])+1.1*r];
+%start = [0 0 1.1];
 %stepsize
 alpha = 0.05;
 
@@ -81,6 +82,7 @@ end
 figure(4)
 hold on
 plot3(path(:,1),path(:,2),path(:,3),'-c',LineWidth=3)
+end
 
 function [dFdx dFdy] = gradgriewank(x,y)
     dFdx = 200*(x/2000+sin(x)*cos(y/sqrt(2)));
