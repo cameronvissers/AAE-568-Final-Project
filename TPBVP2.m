@@ -1,3 +1,6 @@
+function [y, tau] = TPBVP2(start,stop)
+
+
 tf = 1;
 steps = 1000;
 dt = tf/steps;
@@ -7,13 +10,15 @@ solinit = bvpinit(linspace(0,tf,steps), [0 0 0 0 0 0 ...
                                          0 0 0 0 0 0 ...
                                          0 0 0 0 0 0]); %can be chosen arbitrary
 options = bvpset('Stats','on','RelTol',1e-1);
-sol = bvp4c(@BVP_ode, @BVP_bc, solinit, options);
+sol = bvp4c(@BVP_ode, @(ya,yb)BVP_bc(ya,yb,start,stop), solinit, options);
 tau = sol.x;
 y = sol.y;
 FW4Plotfunction
 figure(4)
 plot3(y(1,:),y(3,:),y(5,:),'-m',linewidth=3)
 grid on
+
+end
 
 function dydt = BVP_ode(t,y)
 g=9.81;
@@ -56,14 +61,14 @@ g*y(14);
 end
 
 %y(1:12) = qdot   y(13:24) = lamndadot y(25) = tf
-function res = BVP_bc(ya,yb)
-xtf = 10;
-ytf = -1;
-ztf = 200*griewank([xtf ytf]);
+function res = BVP_bc(ya,yb,initial,final)
+xtf = final(1);
+ytf = final(2);
+ztf = final(3);
 
-x0 = 0;
-y0 = 0;
-z0 = 200*griewank([x0 y0]);
+x0 = initial(1);
+y0 = initial(2);
+z0 = initial(3);
 
 res = [ ya(1) - x0;
 ya(2) - 0;
