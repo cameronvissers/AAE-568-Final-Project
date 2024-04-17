@@ -31,6 +31,6 @@ K = Ppriori*transpose(H)*inv(S);
 
 % Output values
 xPred = xHat + K*z;
-P = (eye(9) - K*H)*Ppriori;
+P = (eye(12) - K*H)*Ppriori;
 
 end

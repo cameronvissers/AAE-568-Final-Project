@@ -283,10 +283,10 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
         y = [nedGpsPosMeas'; nedVelLLAGpsMeas'; 0; 0; 0; 0; 0; 0];
 
         % Command states (4x1)
-        u1 = T;
-        u2 = Tphi;
-        u3 = Ttheta;
-        u4 = Tpsi;
+        u1 = 1;
+        u2 = 1;
+        u3 = 1;
+        u4 = 1;
         u = [u1; u2; u3; u4]; % TODO: Create u compoennts
 
         % Dynamics matrix (12x12)
