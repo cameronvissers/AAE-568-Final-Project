@@ -221,9 +221,9 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
               0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0;  % phiDot
               0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0;  % thetaDot
               0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0]; % psiDot
-%             x  y  z  u  v  w  r  p  y  R  P  Y
+%             x  y  z  u  v  w  r   p  y  R  P  Y
 
-        % Commands matrix (12x4)
+        % Commands matrix (12x4) % TODO: Need mass and moments of inertia
         B = [  0     0     0     0;  % x
                0     0     0     0;  % y
                0     0     0     0;  % z
@@ -304,7 +304,7 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
               0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0]; % psiDot
 %             x  y  z  u  v  w  r   p  y  R  P  Y
 
-        % Commands matrix (12x4)
+        % Commands matrix (12x4) % TODO: Need mass and moments of inertia
         B = [  0     0     0     0;  % x
                0     0     0     0;  % y
                0     0     0     0;  % z
@@ -362,6 +362,7 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
     filterCovPitch(:,i)  = P(8,8);
     filterCovYaw(:,i)    = P(9,9);
 
+    % TODO: We may need to delete this once we have physical dynamics 
     % Fake the rotation, because it's a square, on what our Euler angle is
     switch wpFrom
         case 1
@@ -390,7 +391,7 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
             end
     end
     
-    % TODO: We may need to add the real dynamics of the thing here
+    % TODO: We may need to add the real dynamics for all of the code below
     % Propagate the position based on the velocity from before for the next
     % step
     nedPos(:,i) = nedPos(:,i-1) + nedVel(:,i-1) .* timeStep;
@@ -422,7 +423,9 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
 
 end
 
-%% DEBUG
+%% Plotting 
+
+% Filter the data points so that plots are more visible
 outData = 1:100:i;
 timeVec = timeStep.*[0:1:i];
 timeVec = timeVec(outData);
@@ -463,7 +466,10 @@ title('Body Position Filter Estimate Comparison');
 xlabel('xNorth (meters)');
 ylabel('yEast (meters)');
 
-% Each individual position compared to it's error in NED
+% For axes linking
+axInd = 1;
+
+% X position compared to error in NED
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -475,15 +481,18 @@ plot(timeVec, filterEst(1,outData) - sqrt(filterCovPosX(outData)), 'k');
 xlabel('Time (s)');
 ylabel('X Pos North (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(1) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
-plot(timeVec, sqrt(filterCovPosY(outData)), 'r')
+plot(timeVec, sqrt(filterCovPosX(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(filterCovPosX), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma(1,1)');
-ax(2) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% Y position compared to error in NED
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -495,15 +504,18 @@ plot(timeVec, filterEst(2,outData) - sqrt(filterCovPosY(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Y Pos East (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(3) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovPosY(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovPosY)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (2,2)');
-ax(4) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% Z position compared to error in NED
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -515,15 +527,41 @@ plot(timeVec, filterEst(3,outData) - sqrt(filterCovPosZ(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Z Pos Down (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(5) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovPosZ(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovPosZ)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (3,3)');
-ax(6) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% X velocity compared to error in NED
+figure;
+subplot(3,1,1:2)
+hold on; grid on;
+title('East Velocity Comparison')
+plot(timeVec, nedVel(1,outData), 'b');
+plot(timeVec, filterEst(4,outData), 'r');
+plot(timeVec, filterEst(4,outData) + sqrt(filterCovVelX(outData)), 'k');
+plot(timeVec, filterEst(4,outData) - sqrt(filterCovVelX(outData)), 'k');
+xlabel('Time (s)');
+ylabel('X Vel East (m)');
+legend('Truth', 'KF Est', '1\sigma Uncert')
+ax(axInd) = gca;
+axInd = axInd + 1;
+subplot(3,1,3)
+hold on; grid on;
+plot(timeVec, sqrt(filterCovVelX(outData)), 'r')
+plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelX)), 2), 'k')
+legend('1\sigma Value', 'Mean')
+ylabel('\sigma (5,5)');
+ax(axInd) = gca;
+axInd = axInd + 1;
+
+% Y velocity compared to error in NED
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -535,15 +573,18 @@ plot(timeVec, filterEst(5,outData) - sqrt(filterCovVelY(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Y Vel East (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(7) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovVelY(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelY)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (5,5)');
-ax(8) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% Z velocity compared to error in NED
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -555,15 +596,18 @@ plot(timeVec, filterEst(6,outData) - sqrt(filterCovVelZ(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Z Vel Down (m)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(9) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovVelZ(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelZ)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (6,6)');
-ax(10) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% Roll angle compared to error in NED
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -575,15 +619,18 @@ plot(timeVec, filterEst(7,outData) - sqrt(filterCovRoll(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Roll Angle (deg)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(11) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovRoll(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovRoll)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (7,7)');
-ax(12) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% Pitch angle compared to error in NED
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -595,15 +642,18 @@ plot(timeVec, filterEst(8,outData) - sqrt(filterCovPitch(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Pitch Angle (deg)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(13) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovPitch(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovPitch)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (8,8)');
-ax(14) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% Yaw angle compared to error in NED
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -615,91 +665,85 @@ plot(timeVec, filterEst(9,outData) - sqrt(filterCovYaw(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Yaw Angle (deg)');
 legend('Truth', 'KF Est', '1\sigma Uncert')
-ax(15) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovYaw(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovYaw)), 2), 'k')
 legend('1\sigma Value', 'Mean')
 ylabel('\sigma (9,9)');
-ax(16) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% NED Position errors in subplots
 figure;
 subplot(3,1,1);
 hold on; grid on; grid minor;
 plot(timeVec, nedPos(1,outData)-filterEst(1,outData), 'b');
 title('Position Errors')
 ylabel('North Pos Err (m)');
-ax(17) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,2);
 hold on; grid on; grid minor;
 plot(timeVec, nedPos(2,outData)-filterEst(2,outData), 'b');
 ylabel('East Pos Err (m)');
-ax(18) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3);
 hold on; grid on; grid minor;
 plot(timeVec, nedPos(3,outData)-filterEst(3,outData), 'b');
 ylabel('Down Pos Err (m)');
 xlabel('Time (s)');
-ax(19) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
+% NED Velocity errors in subplots
 figure;
 subplot(3,1,1);
 hold on; grid on; grid minor;
 plot(timeVec, nedVel(1,outData)-filterEst(4,outData), 'b');
 title('Velocity Errors')
 ylabel('North Vel Err (m)');
-ax(20) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,2);
 hold on; grid on; grid minor;
 plot(timeVec, nedVel(2,outData)-filterEst(5,outData), 'b');
 ylabel('East Vel Err (m)');
-ax(21) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3);
 hold on; grid on; grid minor;
 plot(timeVec, nedVel(3,outData)-filterEst(6,outData), 'b');
 ylabel('Down Vel Err (m)');
 xlabel('Time (s)');
-ax(22) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 
-figure;
-subplot(3,1,1);
-hold on; grid on; grid minor;
-plot(timeVec, nedVel(1,outData)-filterEst(4,outData), 'b');
-title('Velocity Errors')
-ylabel('North Vel Err (m)');
-ax(23) = gca;
-subplot(3,1,2);
-hold on; grid on; grid minor;
-plot(timeVec, nedVel(2,outData)-filterEst(5,outData), 'b');
-ylabel('East Vel Err (m)');
-ax(24) = gca;
-subplot(3,1,3);
-hold on; grid on; grid minor;
-plot(timeVec, nedVel(3,outData)-filterEst(6,outData), 'b');
-ylabel('Down Vel Err (m)');
-xlabel('Time (s)');
-ax(25) = gca;
-
+% Body Euler errors in subplots
 figure;
 subplot(3,1,1);
 hold on; grid on; grid minor;
 plot(timeVec, bodyEulerAng(1,outData)-filterEst(7,outData), 'b');
 title('Euler Angle Errors')
 ylabel('Roll Error (deg)');
-ax(26) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,2);
 hold on; grid on; grid minor;
 plot(timeVec, bodyEulerAng(2,outData)-filterEst(8,outData), 'b');
 ylabel('Pitch Error (deg)');
-ax(27) = gca;
+ax(axInd) = gca;
+axInd = axInd + 1;
 subplot(3,1,3);
 hold on; grid on; grid minor;
 plot(timeVec, bodyEulerAng(3,outData)-filterEst(9,outData), 'b');
 ylabel('Yaw Error (deg)');
 xlabel('Time (s)');
-ax(28) = gca;
-
+ax(axInd) = gca;
+axInd = axInd + 1;
 
 linkaxes(ax, 'x')
 
