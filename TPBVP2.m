@@ -1,11 +1,11 @@
-function [y, tau] = TPBVP2(start,stop)
+function [y, tau] = TPBVP2(start,stop,time)
 
 
-tf = 1;
+tf = time;
 steps = 1000;
 dt = tf/steps;
 
-solinit = bvpinit(linspace(0,tf,steps), [0 0 0 0 0 0 ...
+solinit = bvpinit(linspace(0,tf,steps), [start(1) start(4) start(2) start(5) start(3) start(6) ...
                                          0 0 0 0 0 0 ...
                                          0 0 0 0 0 0 ...
                                          0 0 0 0 0 0]); %can be chosen arbitrary
@@ -24,13 +24,15 @@ function dydt = BVP_ode(t,y)
 g=9.81;
 m=1;
 %I = [Ixx Iyy Izz]
+%I = [0.0012 0.0012 0.002];
 I = [1 1 1];
 u = [0 0 0 0];
 
-u(1) = -y(18)/m;
-u(2) = -y(20)/I(1);
-u(3) = -y(22)/I(2);
-u(4) = -y(24)/I(3);
+
+u(1) = min(300,max(-300,-y(18)/m));
+u(2) = min(300,max(-300,-y(20)/I(1)));
+u(3) = min(300,max(-300,-y(22)/I(2)));
+u(4) = min(300,max(-300-y(24)/I(3)));
 
 %y(1:12) = qdot   y(13:24) = lamndadot y(25) = tf
 dydt = [
@@ -62,32 +64,32 @@ end
 
 %y(1:12) = qdot   y(13:24) = lamndadot y(25) = tf
 function res = BVP_bc(ya,yb,initial,final)
-xtf = final(1);
-ytf = final(2);
-ztf = final(3);
+% xtf = final(1);
+% ytf = final(2);
+% ztf = final(3);
+% 
+% x0 = initial(1);
+% y0 = initial(2);
+% z0 = initial(3);
 
-x0 = initial(1);
-y0 = initial(2);
-z0 = initial(3);
-
-res = [ ya(1) - x0;
-ya(2) - 0;
-ya(3) - y0;
-ya(4) - 0;
-ya(5) - z0;
-ya(6) - 0;
+res = [ ya(1) - initial(1);
+ya(2) - initial(4);
+ya(3) - initial(2);
+ya(4) - initial(5);
+ya(5) - initial(3);
+ya(6) - initial(6);
 ya(7) - 0;
 ya(8) - 0;
 ya(9) - 0;
 ya(10) - 0;
 ya(11) - 0;
 ya(12) - 0;
-yb(1) - xtf;
-yb(2) - 0;
-yb(3) - ytf;
-yb(4) - 0;
-yb(5) - ztf;
-yb(6) - 0;
+yb(1) - final(1);
+yb(2) - final(4);
+yb(3) - final(2);
+yb(4) - final(5);
+yb(5) - final(3);
+yb(6) - final(6);
 yb(7) - 0;
 yb(8) - 0;
 yb(9) - 0;
