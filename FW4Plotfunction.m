@@ -25,10 +25,26 @@ zlabel('h','Fontsize',f_size);
 box on
 hold on
 
-[Xg, Yg] = meshgrid(x1/.0025,x2/.0025);
+[Xg, Yg] = meshgrid(x1*.0025,x2*.0025);
+
+for i = 1:101
+    for j =  1:101
+        [Xnorthned(i,j),Yeastned(i,j),zdownned(i,j)] = geodetic2ned(Xg(i,j), Yg(i,j), f(i,j), 0, 0, 1.1, wgs84Ellipsoid, 'degrees');
+    end
+end
+
 
 b = figure(6);
 b = surf(Xg,Yg,f);
+set(gca,'Fontsize',f_size)
+xlabel('x','Fontsize',f_size);
+ylabel('y','Fontsize',f_size);
+zlabel('h','Fontsize',f_size);
+box on
+hold on
+
+d = figure(111);
+d = surf(Xnorthned,Yeastned,zdownned);
 set(gca,'Fontsize',f_size)
 xlabel('x','Fontsize',f_size);
 ylabel('y','Fontsize',f_size);
