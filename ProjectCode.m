@@ -380,7 +380,7 @@ while ((endSim == false) && (i < 100000)) % 100,000 is to ensure while-exit crit
     if ((bodyEulerAng(3,i-1) + spec.yawRateDegPerSec * timeStep) < reqYaw)
         bodyEulerAngRate(3,i) = spec.yawRateDegPerSec;
         bodyEulerAng(3,i) = bodyEulerAng(3,i-1) + bodyEulerAngRate(3,i) * timeStep;
-    elseif ((bodyEulerAng(2,i-1) - spec.yawRateDegPerSec * timeStep) > reqYaw)
+    elseif ((bodyEulerAng(3,i-1) - spec.yawRateDegPerSec * timeStep) > reqYaw)
         bodyEulerAngRate(3,i) = -spec.yawRateDegPerSec;
         bodyEulerAng(3,i) = bodyEulerAng(3,i-1) + bodyEulerAngRate(3,i) * timeStep;
     else
@@ -415,7 +415,7 @@ title('Geodetic Position Visualization');
 xlabel('Latitude (deg)');
 ylabel('Longitude (deg)');
 zlabel('Altitude (meters)');
-legend('Planned Path', 'Starting Waypoint', 'Waypoints', 'True Position')
+legend('Planned Path', 'Starting Waypoint', 'Waypoints', 'True Position', 'Location', 'Best')
 
 %% Plotting 
 
@@ -436,14 +436,14 @@ title('NED Position Visualization');
 xlabel('xNorth (meters)');
 ylabel('Negative yEast (meters)');
 zlabel('Negative zDown (meters)');
-legend('Planned Path', 'Starting Waypoint', 'Waypoints', 'True Position', 'KF Estimate')
+legend('Planned Path', 'Starting Waypoint', 'Waypoints', 'True Position', 'KF Estimate', 'Location', 'Best')
 
 % Filtered position for tracking - 3D
 figure; hold on; grid on;
 scatter3(nedPos(1,outData), nedPos(2,outData), -nedPos(3,outData), 'r.');
 plot3(filterEst(1,outData), filterEst(2,outData), -filterEst(3,outData), 'b')
 view(3)
-legend('True Body Pos', 'KF Estimation');
+legend('True Body Pos', 'KF Estimation', 'Location', 'Best')
 title('Body Position Filter Estimate Comparison');
 xlabel('xNorth (meters)');
 ylabel('yEast (meters)');
@@ -453,7 +453,7 @@ zlabel('Negative zDown (meters)');
 figure; hold on; grid on;
 scatter(nedPos(1,outData), nedPos(2,outData), 'r.');
 plot(filterEst(1,outData), filterEst(2,outData), 'b')
-legend('True Body Pos', 'KF Estimation');
+legend('True Body Pos', 'KF Estimation', 'Location', 'Best')
 title('Body Position Filter Estimate Comparison');
 xlabel('xNorth (meters)');
 ylabel('yEast (meters)');
@@ -472,14 +472,14 @@ plot(timeVec, filterEst(1,outData) + sqrt(filterCovPosX(outData)), 'k');
 plot(timeVec, filterEst(1,outData) - sqrt(filterCovPosX(outData)), 'k');
 xlabel('Time (s)');
 ylabel('X Pos North (m)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovPosX(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(filterCovPosX), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma(1,1)');
 ax(axInd) = gca;
 axInd = axInd + 1;
@@ -495,14 +495,14 @@ plot(timeVec, filterEst(2,outData) + sqrt(filterCovPosY(outData)), 'k');
 plot(timeVec, filterEst(2,outData) - sqrt(filterCovPosY(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Y Pos East (m)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovPosY(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovPosY)), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma (2,2)');
 ax(axInd) = gca;
 axInd = axInd + 1;
@@ -518,14 +518,14 @@ plot(timeVec, filterEst(3,outData) + sqrt(filterCovPosZ(outData)), 'k');
 plot(timeVec, filterEst(3,outData) - sqrt(filterCovPosZ(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Z Pos Down (m)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovPosZ(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovPosZ)), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma (3,3)');
 ax(axInd) = gca;
 axInd = axInd + 1;
@@ -541,14 +541,14 @@ plot(timeVec, filterEst(4,outData) + sqrt(filterCovVelX(outData)), 'k');
 plot(timeVec, filterEst(4,outData) - sqrt(filterCovVelX(outData)), 'k');
 xlabel('Time (s)');
 ylabel('X Vel East (m)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovVelX(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelX)), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma (5,5)');
 ax(axInd) = gca;
 axInd = axInd + 1;
@@ -564,14 +564,14 @@ plot(timeVec, filterEst(5,outData) + sqrt(filterCovVelY(outData)), 'k');
 plot(timeVec, filterEst(5,outData) - sqrt(filterCovVelY(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Y Vel East (m)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovVelY(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelY)), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma (5,5)');
 ax(axInd) = gca;
 axInd = axInd + 1;
@@ -587,19 +587,19 @@ plot(timeVec, filterEst(6,outData) + sqrt(filterCovVelZ(outData)), 'k');
 plot(timeVec, filterEst(6,outData) - sqrt(filterCovVelZ(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Z Vel Down (m)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovVelZ(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovVelZ)), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma (6,6)');
 ax(axInd) = gca;
 axInd = axInd + 1;
 
-% Roll angle compared to error in NED
+% Roll angle compared to error in Body frame
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -610,19 +610,19 @@ plot(timeVec, filterEst(7,outData) + sqrt(filterCovRoll(outData)), 'k');
 plot(timeVec, filterEst(7,outData) - sqrt(filterCovRoll(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Roll Angle (deg)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovRoll(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovRoll)), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma (7,7)');
 ax(axInd) = gca;
 axInd = axInd + 1;
 
-% Pitch angle compared to error in NED
+% Pitch angle compared to error in Body frame
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -633,19 +633,19 @@ plot(timeVec, filterEst(8,outData) + sqrt(filterCovPitch(outData)), 'k');
 plot(timeVec, filterEst(8,outData) - sqrt(filterCovPitch(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Pitch Angle (deg)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovPitch(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovPitch)), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma (8,8)');
 ax(axInd) = gca;
 axInd = axInd + 1;
 
-% Yaw angle compared to error in NED
+% Yaw angle compared to error in Body frame
 figure;
 subplot(3,1,1:2)
 hold on; grid on;
@@ -656,14 +656,14 @@ plot(timeVec, filterEst(9,outData) + sqrt(filterCovYaw(outData)), 'k');
 plot(timeVec, filterEst(9,outData) - sqrt(filterCovYaw(outData)), 'k');
 xlabel('Time (s)');
 ylabel('Yaw Angle (deg)');
-legend('Truth', 'KF Est', '1\sigma Uncert')
+legend('Truth', 'KF Est', '1\sigma Uncert', 'Location', 'Best')
 ax(axInd) = gca;
 axInd = axInd + 1;
 subplot(3,1,3)
 hold on; grid on;
 plot(timeVec, sqrt(filterCovYaw(outData)), 'r')
 plot([timeVec(1) timeVec(end)], repelem(mean(sqrt(filterCovYaw)), 2), 'k')
-legend('1\sigma Value', 'Mean')
+legend('1\sigma Value', 'Mean', 'Location', 'Best')
 ylabel('\sigma (9,9)');
 ax(axInd) = gca;
 axInd = axInd + 1;
