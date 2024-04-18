@@ -25,8 +25,19 @@ zlabel('h','Fontsize',f_size);
 box on
 hold on
 
-b = figure(2);
-b = contour(X,Y,f,20);
+[Xg, Yg] = meshgrid(x1/.0025,x2/.0025);
+
+b = figure(6);
+b = surf(Xg,Yg,f);
+set(gca,'Fontsize',f_size)
+xlabel('x','Fontsize',f_size);
+ylabel('y','Fontsize',f_size);
+zlabel('h','Fontsize',f_size);
+box on
+hold on
+
+c = figure(2);
+c = contour(X,Y,f,20);
 colorbar
 set(gca,'Fontsize',f_size)
 xlabel('x','Fontsize',f_size);
